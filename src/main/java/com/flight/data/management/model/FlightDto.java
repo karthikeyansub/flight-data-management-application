@@ -1,25 +1,42 @@
 package com.flight.data.management.model;
 
+import jakarta.validation.constraints.*;
 import lombok.Builder;
 
 import java.math.BigDecimal;
-import java.time.ZonedDateTime;
 
 @Builder
 public record FlightDto(
 
-    String airline,
+        Long id,
 
-    String supplier,
+        @NotBlank(message = "Airline name cannot be empty.")
+        String airline,
 
-    BigDecimal fare,
+        @NotBlank(message = "Airline name cannot be empty.")
+        String supplier,
 
-    String departureAirport,
+        @DecimalMin(value = "0.01", message = "Fare must be a positive number.")
+        BigDecimal fare,
 
-    String destinationAirport,
+        @NotNull(message = "Departure airport code cannot be null.")
+        @Size(min = 3, max = 3, message = "Departure airport code must be 3 characters.")
+        String departureAirport,
 
-    ZonedDateTime departureTime,
+        @NotNull(message = "Destination airport code cannot be null.")
+        @Size(min = 3, max = 3, message = "Destination airport code must be 3 characters.")
+        String destinationAirport,
 
-    ZonedDateTime arrivalTime) {
+        @NotNull(message = "Departure time cannot be null.")
+        @Pattern(regexp = """
+        ^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?Z$
+        """, message = "Departure time must be ISO_DATE_TIME format (UTC timezone).")
+        String departureTime,
+
+        @NotNull(message = "Arrival time cannot be null.")
+        @Pattern(regexp = """
+        ^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?Z$
+        """, message = "Arrival time must be ISO_DATE_TIME format (UTC timezone).")
+        String arrivalTime) {
 
 }
