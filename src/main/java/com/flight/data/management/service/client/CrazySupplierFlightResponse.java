@@ -1,11 +1,11 @@
-package com.flight.data.management.model;
+package com.flight.data.management.service.client;
 
 import lombok.Builder;
 
 import java.math.BigDecimal;
 
 @Builder
-public record CrazySupplierFlightResponseDto(
+public record CrazySupplierFlightResponse(
         String carrier,
 
         BigDecimal basePrice,
