@@ -2,6 +2,8 @@ package com.flight.data.management.service.client;
 
 import lombok.Builder;
 
+import java.time.ZonedDateTime;
+
 @Builder
 public record CrazySupplierFlightRequest(
 
@@ -9,7 +11,7 @@ public record CrazySupplierFlightRequest(
 
         String arrivalAirportName,
 
-        String outboundDateTime,
+        ZonedDateTime outboundDateTime,
 
-        String inboundDateTime) {
+        ZonedDateTime inboundDateTime) {
 }

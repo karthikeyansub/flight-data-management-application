@@ -1,5 +1,6 @@
 package com.flight.data.management.service;
 
+import com.flight.data.management.exception.CrazySupplierException;
 import com.flight.data.management.exception.ResourceNotFoundException;
 import com.flight.data.management.model.FlightDto;
 import com.flight.data.management.model.FlightSearchDto;
@@ -19,23 +20,23 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.math.RoundingMode;
-import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 @Service
 @AllArgsConstructor
 public class FlightService {
 
-    private CrazySupplierClient crazySupplierClient;
+    private EntityManager entityManager;
 
     private FlightRepository flightRepository;
 
-    private EntityManager entityManager;
+    private CrazySupplierClient crazySupplierClient;
 
     public List<FlightDto> getFlights() {
         return flightRepository.findAll().stream().map(flight ->
@@ -61,9 +62,9 @@ public class FlightService {
                 .destinationAirport(flightDto.destinationAirport().toUpperCase())
                 .departureTime(covertStringToDateTime(flightDto.departureTime()))
                 .arrivalTime(covertStringToDateTime(flightDto.arrivalTime()))
-                .createdBy("USER")//TODO
+                .createdBy("USER")
                 .createdAt(utcNow)
-                .updatedBy("USER")//TODO
+                .updatedBy("USER")
                 .lastUpdatedAt(utcNow)
                 .build();
         flightRepository.save(flight);
@@ -90,11 +91,71 @@ public class FlightService {
         flightRepository.delete(flight);
     }
 
-    public List<Flight> searchFlights(final FlightSearchDto flightSearchDto) {
+    public List<FlightDto> searchFlights(final FlightSearchDto flightSearchDto) {
         CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
         CriteriaQuery<Flight> criteriaQuery = criteriaBuilder.createQuery(Flight.class);
         Root<Flight> root = criteriaQuery.from(Flight.class);
 
+        List<Predicate> predicates = getFlightSearchPredicates(flightSearchDto, criteriaBuilder, root);
+
+        criteriaQuery.where(criteriaBuilder.and(predicates.toArray(new Predicate[0])));
+
+        //Result from database
+        List<Flight> searchResult = entityManager.createQuery(criteriaQuery).getResultList();
+        List<FlightDto> flights = searchResult.stream().map(flight ->
+                FlightDto.builder()
+                        .airline(flight.getAirline())
+                        .supplier(flight.getSupplier())
+                        .fare(flight.getFare())
+                        .departureAirport(flight.getDepartureAirport())
+                        .destinationAirport(flight.getDestinationAirport())
+                        .departureTime(flight.getDepartureTime().format(DateTimeFormatter.ISO_DATE_TIME))
+                        .arrivalTime(flight.getArrivalTime().format(DateTimeFormatter.ISO_DATE_TIME))
+                        .build()
+        ).toList();
+
+        //Result from CrazySupplier
+        List<FlightDto> crazyFlightSearchResult = searchCrazySupplierFlights(flightSearchDto, searchResult);
+
+        //Combine flight search result from both Database and Crazy Supplier
+        //TODO:
+        flights.addAll(crazyFlightSearchResult);
+
+        return flights;
+    }
+
+    private List<FlightDto> searchCrazySupplierFlights(FlightSearchDto flightSearchDto, List<Flight> searchResult) {
+        CrazySupplierFlightRequest crazySupplierFlightRequest = CrazySupplierFlightRequest.builder()
+                .departureAirportName(flightSearchDto.departureAirport())
+                .arrivalAirportName(flightSearchDto.destinationAirport())
+                //Convert UTC to CET timezone as crazy supplier flight accepts CET timezone.
+                .outboundDateTime(convertUTCToCET(flightSearchDto.departureTime()))
+                .inboundDateTime(convertUTCToCET(flightSearchDto.arrivalTime()))
+                .build();
+        ResponseEntity<List<CrazySupplierFlightResponse>> response = crazySupplierClient.searchCrazySupplierFlights(crazySupplierFlightRequest);
+        if(response.getStatusCode() == HttpStatus.OK) {
+            List<CrazySupplierFlightResponse> crazySupplierFlightResponses = response.getBody();
+            if(crazySupplierFlightResponses == null) {
+                return response.getBody().stream().map(csFlight -> FlightDto.builder()
+                        .airline(csFlight.carrier())
+                        .supplier("Crazy Supplier")
+                        .fare(csFlight.basePrice().add(csFlight.tax()).setScale(2, RoundingMode.HALF_EVEN))
+                        .departureAirport(csFlight.departureAirportName())
+                        .destinationAirport(csFlight.arrivalAirportName())
+                        //Converts to CET to UTC timezone for search api response
+                        .departureTime(convertCETToUTC(csFlight.outboundDateTime()).format(DateTimeFormatter.ISO_DATE_TIME))
+                        .arrivalTime(convertCETToUTC(csFlight.inboundDateTime()).format(DateTimeFormatter.ISO_DATE_TIME))
+                        .build()).toList();
+            }
+        } else {
+            if(response.getStatusCode() == HttpStatus.INTERNAL_SERVER_ERROR) {
+                throw new CrazySupplierException("Something went wrong!");
+            }
+        }
+        return Collections.emptyList();
+    }
+
+    private List<Predicate> getFlightSearchPredicates(FlightSearchDto flightSearchDto, CriteriaBuilder criteriaBuilder, Root<Flight> root) {
         List<Predicate> predicates = new ArrayList<>();
 
         if (flightSearchDto.departureAirport() != null && !flightSearchDto.departureAirport().isEmpty()) {
@@ -116,42 +177,18 @@ public class FlightService {
         if (flightSearchDto.airline() != null && !flightSearchDto.airline().isEmpty()) {
             predicates.add(criteriaBuilder.equal(root.get("airline"), flightSearchDto.airline()));
         }
-
-        criteriaQuery.where(criteriaBuilder.and(predicates.toArray(new Predicate[0])));
-
-        //Result from database
-        List<Flight> searchResult = entityManager.createQuery(criteriaQuery).getResultList();
-
-        //Result from CrazySupplier
-        CrazySupplierFlightRequest crazySupplierFlightRequest = CrazySupplierFlightRequest.builder()
-                .departureAirportName(flightSearchDto.departureAirport())
-                .arrivalAirportName(flightSearchDto.destinationAirport())
-                .outboundDateTime(flightSearchDto.departureTime())
-                .inboundDateTime(flightSearchDto.arrivalTime())
-                .build();
-        ResponseEntity<List<CrazySupplierFlightResponse>> response = crazySupplierClient.searchCrazySupplierFlights(crazySupplierFlightRequest);
-        if(response.getStatusCode() == HttpStatus.OK) {
-            List<Flight> crazySupplierFlights = response.getBody().stream().map(csFlight -> Flight.builder()
-                    .airline(csFlight.carrier())
-                    .supplier("Crazy Supplier")
-                    .fare(csFlight.basePrice().add(csFlight.tax()).setScale(2, RoundingMode.HALF_EVEN))
-                    .departureAirport(csFlight.departureAirportName())
-                    .destinationAirport(csFlight.arrivalAirportName())
-                    .departureTime(covertStringToDateTime(csFlight.outboundDateTime()))
-                    .arrivalTime(covertStringToDateTime(csFlight.inboundDateTime()))
-                    .build()).toList();
-            searchResult.addAll(crazySupplierFlights);
-        } else {
-            //TODO:
-            throw new ResourceNotFoundException("");
-        }
-
-        return searchResult;
+        return predicates;
     }
 
-    //TODO: Exception handling
-    private ZonedDateTime covertStringToDateTime(final String isoDateTimeString) {
-        Instant instant = Instant.parse(isoDateTimeString);
-        return instant.atZone(ZoneId.of("UTC"));
+    private ZonedDateTime covertStringToDateTime(final String utcDateTimeString) {
+        return ZonedDateTime.parse(utcDateTimeString);
+    }
+
+    private ZonedDateTime convertUTCToCET(final String utcDateTimeString) {
+        return ZonedDateTime.parse(utcDateTimeString).withZoneSameInstant(ZoneId.of("CET"));
+    }
+
+    private ZonedDateTime convertCETToUTC(final ZonedDateTime cetDateTime) {
+        return cetDateTime.withZoneSameInstant(ZoneId.of("UTC"));
     }
 }
