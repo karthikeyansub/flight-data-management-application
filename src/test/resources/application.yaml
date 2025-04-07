@@ -1,0 +1,24 @@
+spring:
+  datasource:
+    driver-class-name: org.h2.Driver
+    url: jdbc:h2:mem:flight_management_database
+    username: test
+    password: test
+
+  jpa:
+    show-sql: false
+    database-platform: org.hibernate.dialect.H2Dialect
+    properties:
+      hibernate:
+        connection:
+          autocommit: false
+    hibernate:
+      ddl-auto: none
+
+  h2.console.enabled: true
+
+crazy-supplier:
+  url: http://localhost:8081
+
+logging:
+  level.root: INFO

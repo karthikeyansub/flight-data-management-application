@@ -15,6 +15,7 @@ import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -30,6 +31,7 @@ import java.util.List;
 
 @Service
 @AllArgsConstructor
+@Slf4j
 public class FlightService {
 
     private EntityManager entityManager;
@@ -39,20 +41,11 @@ public class FlightService {
     private CrazySupplierClient crazySupplierClient;
 
     public List<FlightDto> getFlights() {
-        return flightRepository.findAll().stream().map(flight ->
-                FlightDto.builder()
-                        .airline(flight.getAirline())
-                        .supplier(flight.getSupplier())
-                        .fare(flight.getFare())
-                        .departureAirport(flight.getDepartureAirport())
-                        .destinationAirport(flight.getDestinationAirport())
-                        .departureTime(flight.getDepartureTime().format(DateTimeFormatter.ISO_DATE_TIME))
-                        .arrivalTime(flight.getArrivalTime().format(DateTimeFormatter.ISO_DATE_TIME))
-                        .build()
+        return flightRepository.findAll().stream().map(FlightService::getFlightDto
             ).toList();
     }
 
-    public void createFlight(final FlightDto flightDto) {
+    public FlightDto createFlight(final FlightDto flightDto) {
         ZonedDateTime utcNow = ZonedDateTime.now(ZoneOffset.UTC);
         Flight flight = Flight.builder()
                 .airline(flightDto.airline())
@@ -67,10 +60,11 @@ public class FlightService {
                 .updatedBy("USER")
                 .lastUpdatedAt(utcNow)
                 .build();
-        flightRepository.save(flight);
+        Flight savedFlight = flightRepository.save(flight);
+        return getFlightDto(savedFlight);
     }
 
-    public void updateFlight(final Long id, final FlightDto flightDto) {
+    public FlightDto updateFlight(final Long id, final FlightDto flightDto) {
         final Flight flight = flightRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Flight not found"));
 
         flight.setAirline(flightDto.airline());
@@ -80,10 +74,12 @@ public class FlightService {
         flight.setDestinationAirport(flightDto.destinationAirport().toUpperCase());
         flight.setDepartureTime(covertStringToDateTime(flightDto.departureTime()));
         flight.setArrivalTime(covertStringToDateTime(flightDto.arrivalTime()));
-        flight.setUpdatedBy("USER");//TODO
+        flight.setUpdatedBy("USER");
         flight.setLastUpdatedAt(ZonedDateTime.now(ZoneOffset.UTC));
 
-        flightRepository.save(flight);
+        Flight updatedFlight = flightRepository.save(flight);
+
+        return getFlightDto(updatedFlight);
     }
 
     public void deleteFlight(final Long id) {
@@ -102,29 +98,18 @@ public class FlightService {
 
         //Result from database
         List<Flight> searchResult = entityManager.createQuery(criteriaQuery).getResultList();
-        List<FlightDto> flights = searchResult.stream().map(flight ->
-                FlightDto.builder()
-                        .airline(flight.getAirline())
-                        .supplier(flight.getSupplier())
-                        .fare(flight.getFare())
-                        .departureAirport(flight.getDepartureAirport())
-                        .destinationAirport(flight.getDestinationAirport())
-                        .departureTime(flight.getDepartureTime().format(DateTimeFormatter.ISO_DATE_TIME))
-                        .arrivalTime(flight.getArrivalTime().format(DateTimeFormatter.ISO_DATE_TIME))
-                        .build()
-        ).toList();
+        List<FlightDto> flights = new ArrayList<>(searchResult.stream().map(FlightService::getFlightDto).toList());
 
         //Result from CrazySupplier
-        List<FlightDto> crazyFlightSearchResult = searchCrazySupplierFlights(flightSearchDto, searchResult);
+        List<FlightDto> crazyFlightSearchResult = searchCrazySupplierFlights(flightSearchDto);
 
         //Combine flight search result from both Database and Crazy Supplier
-        //TODO:
         flights.addAll(crazyFlightSearchResult);
 
         return flights;
     }
 
-    private List<FlightDto> searchCrazySupplierFlights(FlightSearchDto flightSearchDto, List<Flight> searchResult) {
+    private List<FlightDto> searchCrazySupplierFlights(FlightSearchDto flightSearchDto) {
         CrazySupplierFlightRequest crazySupplierFlightRequest = CrazySupplierFlightRequest.builder()
                 .departureAirportName(flightSearchDto.departureAirport())
                 .arrivalAirportName(flightSearchDto.destinationAirport())
@@ -180,6 +165,19 @@ public class FlightService {
         return predicates;
     }
 
+    private static FlightDto getFlightDto(Flight flight) {
+        return FlightDto.builder()
+                .id(flight.getId())
+                .airline(flight.getAirline())
+                .supplier(flight.getSupplier())
+                .fare(flight.getFare())
+                .departureAirport(flight.getDepartureAirport())
+                .destinationAirport(flight.getDestinationAirport())
+                .departureTime(flight.getDepartureTime().format(DateTimeFormatter.ISO_DATE_TIME))
+                .arrivalTime(flight.getArrivalTime().format(DateTimeFormatter.ISO_DATE_TIME))
+                .build();
+    }
+
     private ZonedDateTime covertStringToDateTime(final String utcDateTimeString) {
         return ZonedDateTime.parse(utcDateTimeString);
     }
@@ -188,7 +186,7 @@ public class FlightService {
         return ZonedDateTime.parse(utcDateTimeString).withZoneSameInstant(ZoneId.of("CET"));
     }
 
-    private ZonedDateTime convertCETToUTC(final ZonedDateTime cetDateTime) {
-        return cetDateTime.withZoneSameInstant(ZoneId.of("UTC"));
+    private ZonedDateTime convertCETToUTC(final String cetDateTime) {
+        return ZonedDateTime.parse(cetDateTime).withZoneSameInstant(ZoneId.of("UTC"));
     }
 }

@@ -3,7 +3,6 @@ package com.flight.data.management.service.client;
 import lombok.Builder;
 
 import java.math.BigDecimal;
-import java.time.ZonedDateTime;
 
 @Builder
 public record CrazySupplierFlightResponse(
@@ -17,7 +16,7 @@ public record CrazySupplierFlightResponse(
 
         String arrivalAirportName,
 
-        ZonedDateTime outboundDateTime,
+        String outboundDateTime,
 
-        ZonedDateTime inboundDateTime) {
+        String inboundDateTime) {
 }

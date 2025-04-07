@@ -13,9 +13,10 @@ public record FlightDto(
         @NotBlank(message = "Airline name cannot be empty.")
         String airline,
 
-        @NotBlank(message = "Airline name cannot be empty.")
+        @NotBlank(message = "Supplier name cannot be empty.")
         String supplier,
 
+        @NotNull(message = "Fare cannot be null.")
         @DecimalMin(value = "0.01", message = "Fare must be a positive number.")
         BigDecimal fare,
 
@@ -28,15 +29,11 @@ public record FlightDto(
         String destinationAirport,
 
         @NotNull(message = "Departure time cannot be null.")
-        @Pattern(regexp = """
-        ^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?Z$
-        """, message = "Departure time must be ISO_DATE_TIME format (UTC timezone).")
+        @Pattern(regexp = "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{1,9}Z\\[UTC]$", message = "Departure time must be ISO_DATE_TIME format (UTC timezone).")
         String departureTime,
 
         @NotNull(message = "Arrival time cannot be null.")
-        @Pattern(regexp = """
-        ^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?Z$
-        """, message = "Arrival time must be ISO_DATE_TIME format (UTC timezone).")
+        @Pattern(regexp = "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{1,9}Z\\[UTC]$", message = "Arrival time must be ISO_DATE_TIME format (UTC timezone).")
         String arrivalTime) {
 
 }
