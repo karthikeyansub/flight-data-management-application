@@ -9,11 +9,6 @@ import com.flight.data.management.repository.FlightRepository;
 import com.flight.data.management.service.client.CrazySupplierClient;
 import com.flight.data.management.service.client.CrazySupplierFlightRequest;
 import com.flight.data.management.service.client.CrazySupplierFlightResponse;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.criteria.CriteriaBuilder;
-import jakarta.persistence.criteria.CriteriaQuery;
-import jakarta.persistence.criteria.Predicate;
-import jakarta.persistence.criteria.Root;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -33,8 +28,6 @@ import java.util.List;
 @AllArgsConstructor
 @Slf4j
 public class FlightService {
-
-    private EntityManager entityManager;
 
     private FlightRepository flightRepository;
 
@@ -88,18 +81,14 @@ public class FlightService {
     }
 
     public List<FlightDto> searchFlights(final FlightSearchDto flightSearchDto) {
-        CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
-        CriteriaQuery<Flight> criteriaQuery = criteriaBuilder.createQuery(Flight.class);
-        Root<Flight> root = criteriaQuery.from(Flight.class);
-
-        List<Predicate> predicates = getFlightSearchPredicates(flightSearchDto, criteriaBuilder, root);
-
-        criteriaQuery.where(criteriaBuilder.and(predicates.toArray(new Predicate[0])));
 
         //Result from database
-        List<Flight> searchResult = entityManager.createQuery(criteriaQuery).getResultList();
+        log.debug("Search flights from database");
+        List<Flight> searchResult = flightRepository.searchFlights(flightSearchDto.airline(), flightSearchDto.departureAirport(),
+                flightSearchDto.destinationAirport(), covertStringToDateTime(flightSearchDto.departureTime()), covertStringToDateTime(flightSearchDto.arrivalTime()));
         List<FlightDto> flights = new ArrayList<>(searchResult.stream().map(FlightService::getFlightDto).toList());
 
+        log.debug("Begin search flights from crazy supplier service");
         //Result from CrazySupplier
         List<FlightDto> crazyFlightSearchResult = searchCrazySupplierFlights(flightSearchDto);
 
@@ -120,7 +109,7 @@ public class FlightService {
         ResponseEntity<List<CrazySupplierFlightResponse>> response = crazySupplierClient.searchCrazySupplierFlights(crazySupplierFlightRequest);
         if(response.getStatusCode() == HttpStatus.OK) {
             List<CrazySupplierFlightResponse> crazySupplierFlightResponses = response.getBody();
-            if(crazySupplierFlightResponses == null) {
+            if(crazySupplierFlightResponses != null) {
                 return response.getBody().stream().map(csFlight -> FlightDto.builder()
                         .airline(csFlight.carrier())
                         .supplier("Crazy Supplier")
@@ -140,31 +129,6 @@ public class FlightService {
         return Collections.emptyList();
     }
 
-    private List<Predicate> getFlightSearchPredicates(FlightSearchDto flightSearchDto, CriteriaBuilder criteriaBuilder, Root<Flight> root) {
-        List<Predicate> predicates = new ArrayList<>();
-
-        if (flightSearchDto.departureAirport() != null && !flightSearchDto.departureAirport().isEmpty()) {
-            predicates.add(criteriaBuilder.equal(root.get("departureAirport"), flightSearchDto.departureAirport()));
-        }
-
-        if (flightSearchDto.destinationAirport() != null && !flightSearchDto.destinationAirport().isEmpty()) {
-            predicates.add(criteriaBuilder.equal(root.get("destinationAirport"), flightSearchDto.destinationAirport()));
-        }
-
-        if (flightSearchDto.departureTime() != null) {
-            predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("departureTime"), covertStringToDateTime(flightSearchDto.departureTime())));
-        }
-
-        if (flightSearchDto.arrivalTime() != null) {
-            predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("arrivalTime"), covertStringToDateTime(flightSearchDto.arrivalTime())));
-        }
-
-        if (flightSearchDto.airline() != null && !flightSearchDto.airline().isEmpty()) {
-            predicates.add(criteriaBuilder.equal(root.get("airline"), flightSearchDto.airline()));
-        }
-        return predicates;
-    }
-
     private static FlightDto getFlightDto(Flight flight) {
         return FlightDto.builder()
                 .id(flight.getId())
@@ -178,7 +142,11 @@ public class FlightService {
                 .build();
     }
 
-    private ZonedDateTime covertStringToDateTime(final String utcDateTimeString) {
+    public static void main(String[] args) {
+        System.out.println(covertStringToDateTime("2025-04-07T16:07:09.3714066Z[UTC]"));
+    }
+
+    public static ZonedDateTime covertStringToDateTime(final String utcDateTimeString) {
         return ZonedDateTime.parse(utcDateTimeString);
     }
 

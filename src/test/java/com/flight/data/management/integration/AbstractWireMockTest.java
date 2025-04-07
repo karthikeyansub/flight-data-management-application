@@ -13,9 +13,9 @@ public class AbstractWireMockTest extends AbstractIntegrationTest {
 
     @BeforeAll
     static void init() {
-        wireMockServer = new WireMockServer(new WireMockConfiguration().port(8081));
+        wireMockServer = new WireMockServer(new WireMockConfiguration().port(8091));
         wireMockServer.start();
-        configureFor("localhost", 8081);
+        configureFor("localhost", 8091);
     }
 
     @AfterAll

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import com.flight.data.management.model.ErrorResponse;
 import com.flight.data.management.model.FlightDto;
+import com.flight.data.management.model.FlightResponse;
 import com.flight.data.management.model.FlightSearchDto;
 import com.flight.data.management.util.TestDataUtil;
 import com.github.tomakehurst.wiremock.client.WireMock;
@@ -18,7 +19,6 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.result.MockMvcResultHandlers;
 
 import java.math.BigDecimal;
-import java.util.List;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static org.junit.jupiter.api.Assertions.*;
@@ -45,9 +45,9 @@ public class FlightApiControllerIT extends AbstractWireMockTest {
                     .andReturn();
 
             String responseJson = result.getResponse().getContentAsString();
-            List<FlightDto> response = objectMapper.readValue(responseJson, List.class);
+            FlightResponse response = objectMapper.readValue(responseJson, FlightResponse.class);
             assertNotNull(response);
-            assertEquals(2, response.size());
+            assertEquals(2, response.flightDtoList().size());
         }
 
         @Test
@@ -118,13 +118,12 @@ public class FlightApiControllerIT extends AbstractWireMockTest {
                     .andReturn();
 
             String responseJson = result.getResponse().getContentAsString();
-            List<FlightDto> response = objectMapper.readValue(responseJson, List.class);
+            FlightResponse response = objectMapper.readValue(responseJson, FlightResponse.class);
             assertNotNull(response);
-            assertEquals(1, response.size());
-            FlightDto searchedFlight = response.get(0);
-            assertEquals(100, searchedFlight.id());
-            assertEquals("KLM", searchedFlight.airline());
-            assertEquals(BigDecimal.valueOf(1200.00).setScale(2), searchedFlight.fare());
+            assertEquals(1, response.flightDtoList().size());
+            FlightDto searchedFlight = response.flightDtoList().get(0);
+            assertEquals("Transavia", searchedFlight.airline());
+            assertEquals(BigDecimal.valueOf(200.50).setScale(2), searchedFlight.fare());
         }
     }
 
@@ -146,6 +145,24 @@ public class FlightApiControllerIT extends AbstractWireMockTest {
             ErrorResponse response = objectMapper.readValue(responseJson, ErrorResponse.class);
             assertNotNull(response);
             assertEquals("Flight not found", response.errorMessage());
+        }
+
+        @Test
+        @DisplayName("POST:/api/flights/search - should return 500 Internal Server Error when crazy supplier service is down")
+        void testSearchFlight_ReturnResponse_HttpStatus500_WhenCrazySupplierServiceDown() throws Exception {
+            FlightSearchDto request = TestDataUtil.getFlightSearchDto();
+
+            MvcResult result = mockMvc.perform(post("/api/flights/search")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(covertToJsonString(request)))
+                    .andDo(MockMvcResultHandlers.print())
+                    .andExpect(status().isInternalServerError())
+                    .andReturn();
+
+            String responseJson = result.getResponse().getContentAsString();
+            ErrorResponse response = objectMapper.readValue(responseJson, ErrorResponse.class);
+            assertNotNull(response);
+            assertEquals("Something went wrong", response.errorMessage());
         }
     }
 

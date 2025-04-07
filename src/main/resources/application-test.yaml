@@ -6,7 +6,7 @@ spring:
     password: test
 
   jpa:
-    show-sql: false
+    show-sql: true
     database-platform: org.hibernate.dialect.H2Dialect
     properties:
       hibernate:
@@ -18,7 +18,7 @@ spring:
   h2.console.enabled: true
 
 crazy-supplier:
-  url: http://localhost:8081
+  url: http://localhost:8091
 
 logging:
   level.root: INFO

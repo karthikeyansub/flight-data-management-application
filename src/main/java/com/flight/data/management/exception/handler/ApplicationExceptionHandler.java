@@ -23,7 +23,7 @@ public class ApplicationExceptionHandler {
     @ExceptionHandler(Throwable.class)
     public ResponseEntity<ErrorResponse> handleGenericException(final Exception exception) {
         log.error("Internal server error - {}", exception.getMessage());
-        return ResponseEntity.internalServerError().body(new ErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR.name(), exception.getMessage(), null));
+        return ResponseEntity.internalServerError().body(new ErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR.name(), "Something went wrong", null));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

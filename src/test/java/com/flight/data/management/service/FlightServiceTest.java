@@ -1,15 +1,16 @@
 package com.flight.data.management.service;
 
+import com.flight.data.management.exception.CrazySupplierException;
 import com.flight.data.management.exception.ResourceNotFoundException;
 import com.flight.data.management.model.FlightDto;
 import com.flight.data.management.repository.FlightRepository;
 import com.flight.data.management.service.client.CrazySupplierClient;
 import com.flight.data.management.util.TestDataUtil;
-import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
 import java.util.List;
@@ -29,12 +30,9 @@ class FlightServiceTest {
     @Mock
     private CrazySupplierClient mockCrazySupplierClient;
 
-    @Mock
-    private EntityManager entityManager;
-
     @BeforeEach
     void setUp() {
-        classUnderTest = new FlightService(entityManager, mockFlightRepository, mockCrazySupplierClient);
+        classUnderTest = new FlightService(mockFlightRepository, mockCrazySupplierClient);
     }
 
     @Test
@@ -104,5 +102,34 @@ class FlightServiceTest {
         verify(mockFlightRepository, times(0)).delete(any());
     }
 
+    @Test
+    void testSearchFlights_ReturnFlights_BasedOnFliters() {
+        when(mockFlightRepository.searchFlights(anyString(), anyString(), anyString(), any(), any()))
+                .thenReturn(TestDataUtil.getFlights());
+
+        when(mockCrazySupplierClient.searchCrazySupplierFlights(any()))
+                .thenReturn(ResponseEntity.ok(TestDataUtil.getCrazySupplierSearchResponse()));
+
+        List<FlightDto> result = classUnderTest.searchFlights(TestDataUtil.getFlightSearchDto());
+
+        assertFalse(result.isEmpty());
+        assertEquals(3, result.size());
+        verify(mockFlightRepository, times(1)).searchFlights(anyString(), anyString(), anyString(), any(), any());
+        verify(mockCrazySupplierClient, times(1)).searchCrazySupplierFlights(any());
+    }
+
+    @Test
+    void testSearchFlights_Throws_CrazySupplierException() {
+        when(mockFlightRepository.searchFlights(anyString(), anyString(), anyString(), any(), any()))
+                .thenReturn(TestDataUtil.getFlights());
+
+        when(mockCrazySupplierClient.searchCrazySupplierFlights(any()))
+                .thenReturn(ResponseEntity.internalServerError().body(TestDataUtil.getCrazySupplierSearchResponse()));
+
+        assertThrows(CrazySupplierException.class, () -> classUnderTest.searchFlights(TestDataUtil.getFlightSearchDto()));
+
+        verify(mockFlightRepository, times(1)).searchFlights(anyString(), anyString(), anyString(), any(), any());
+        verify(mockCrazySupplierClient, times(1)).searchCrazySupplierFlights(any());
+    }
 
 }

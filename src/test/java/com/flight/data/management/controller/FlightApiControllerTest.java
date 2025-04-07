@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectWriter;
 import com.flight.data.management.config.WebSecurityConfig;
 import com.flight.data.management.model.ErrorResponse;
 import com.flight.data.management.model.FlightDto;
+import com.flight.data.management.model.FlightResponse;
 import com.flight.data.management.model.FlightSearchDto;
 import com.flight.data.management.service.FlightService;
 import com.flight.data.management.util.TestDataUtil;
@@ -61,9 +62,9 @@ class FlightApiControllerTest {
                     .andReturn();
 
             String responseJson = result.getResponse().getContentAsString();
-            List<FlightDto> response = objectMapper.readValue(responseJson, List.class);
+            FlightResponse response = objectMapper.readValue(responseJson, FlightResponse.class);
             assertNotNull(response);
-            assertEquals(2, response.size());
+            assertEquals(2, response.flightDtoList().size());
             verify(mockFlightService, times(1)).getFlights();
         }
 
@@ -130,9 +131,9 @@ class FlightApiControllerTest {
                     .andReturn();
 
             String responseJson = result.getResponse().getContentAsString();
-            List<FlightDto> response = objectMapper.readValue(responseJson, List.class);
+            FlightResponse response = objectMapper.readValue(responseJson, FlightResponse.class);
             assertNotNull(response);
-            assertEquals(1, response.size());
+            assertEquals(1, response.flightDtoList().size());
             verify(mockFlightService, times(1)).searchFlights(any());
         }
     }

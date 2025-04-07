@@ -2,6 +2,7 @@ package com.flight.data.management.controller;
 
 import com.flight.data.management.exception.ValidationException;
 import com.flight.data.management.model.FlightDto;
+import com.flight.data.management.model.FlightResponse;
 import com.flight.data.management.model.FlightSearchDto;
 import com.flight.data.management.service.FlightService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -34,10 +35,11 @@ public class FlightApiController {
             @ApiResponse(responseCode = "500", description = "System errors")
     })
     @GetMapping
-    public List<FlightDto> getFlights() {
+    public FlightResponse getFlights() {
         log.info("Received request for GET: /api/flights");
 
-        return flightService.getFlights();
+        List<FlightDto> flightDtoList = flightService.getFlights();
+        return FlightResponse.builder().flightDtoList(flightDtoList).build();
     }
 
     @Operation(summary = "Create new flight information",
@@ -131,14 +133,15 @@ public class FlightApiController {
             @ApiResponse(responseCode = "500", description = "System errors")
     })
     @PostMapping("/search")
-    public List<FlightDto> searchFlights(@RequestBody @Valid FlightSearchDto flightSearchDto) {
+    public FlightResponse searchFlights(@RequestBody @Valid FlightSearchDto flightSearchDto) {
         log.info("Received request to search flights POST: /api/flights. Search params: {}", flightSearchDto.toString());
 
         if(!isDepartureTimeBeforeArrivalTime(flightSearchDto.departureTime(), flightSearchDto.arrivalTime())) {
             throw new ValidationException("Invalid departure and arrival time.");
         }
 
-        return flightService.searchFlights(flightSearchDto);
+        List<FlightDto> flightDtoList = flightService.searchFlights(flightSearchDto);
+        return FlightResponse.builder().flightDtoList(flightDtoList).build();
     }
 
     private static boolean isDepartureTimeBeforeArrivalTime(final String departureTimeString, final String arrivalTimeString) {
