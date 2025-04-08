@@ -14,6 +14,8 @@ import java.util.List;
 
 public class TestDataUtil {
 
+    public static final String UTC_DATE_PATTERN = "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{1,9}Z\\[UTC]$";
+
     public static List<Flight> getFlights() {
         ZonedDateTime utcNow = ZonedDateTime.now(ZoneId.of("UTC"));
         List<Flight> flights = new ArrayList<>();

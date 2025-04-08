@@ -16,6 +16,7 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
 import java.util.List;
 import java.util.Optional;
 
+import static com.flight.data.management.util.TestDataUtil.UTC_DATE_PATTERN;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -43,6 +44,8 @@ class FlightServiceTest {
 
         assertFalse(result.isEmpty());
         assertEquals(2, result.size());
+
+        assertTrue(result.get(0).departureTime().matches(UTC_DATE_PATTERN));
         verify(mockFlightRepository, times(1)).findAll();
     }
 
@@ -66,6 +69,7 @@ class FlightServiceTest {
         FlightDto result = classUnderTest.updateFlight(1L, flightDataToUpdate);
 
         assertEquals(1L, result.id());
+        assertTrue(result.departureTime().matches(UTC_DATE_PATTERN));
         verify(mockFlightRepository, times(1)).findById(any());
         verify(mockFlightRepository, times(1)).save(any());
     }
@@ -114,6 +118,7 @@ class FlightServiceTest {
 
         assertFalse(result.isEmpty());
         assertEquals(3, result.size());
+        assertTrue(result.get(0).arrivalTime().matches(UTC_DATE_PATTERN));
         verify(mockFlightRepository, times(1)).searchFlights(anyString(), anyString(), anyString(), any(), any());
         verify(mockCrazySupplierClient, times(1)).searchCrazySupplierFlights(any());
     }

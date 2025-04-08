@@ -137,8 +137,8 @@ public class FlightService {
                 .fare(flight.getFare())
                 .departureAirport(flight.getDepartureAirport())
                 .destinationAirport(flight.getDestinationAirport())
-                .departureTime(flight.getDepartureTime().format(DateTimeFormatter.ISO_DATE_TIME))
-                .arrivalTime(flight.getArrivalTime().format(DateTimeFormatter.ISO_DATE_TIME))
+                .departureTime(flight.getDepartureTime().withZoneSameInstant(ZoneId.of("UTC")).format(DateTimeFormatter.ISO_DATE_TIME))
+                .arrivalTime(flight.getArrivalTime().withZoneSameInstant(ZoneId.of("UTC")).format(DateTimeFormatter.ISO_DATE_TIME))
                 .build();
     }
 

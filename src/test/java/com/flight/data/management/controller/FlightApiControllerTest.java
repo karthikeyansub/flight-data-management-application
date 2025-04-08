@@ -28,6 +28,7 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
+import static com.flight.data.management.util.TestDataUtil.UTC_DATE_PATTERN;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -65,6 +66,8 @@ class FlightApiControllerTest {
             FlightResponse response = objectMapper.readValue(responseJson, FlightResponse.class);
             assertNotNull(response);
             assertEquals(2, response.flightDtoList().size());
+            assertTrue(response.flightDtoList().get(0).departureTime().matches(UTC_DATE_PATTERN));
+            assertTrue(response.flightDtoList().get(0).arrivalTime().matches(UTC_DATE_PATTERN));
             verify(mockFlightService, times(1)).getFlights();
         }
 

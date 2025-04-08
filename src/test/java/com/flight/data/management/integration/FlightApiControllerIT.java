@@ -20,6 +20,7 @@ import org.springframework.test.web.servlet.result.MockMvcResultHandlers;
 
 import java.math.BigDecimal;
 
+import static com.flight.data.management.util.TestDataUtil.UTC_DATE_PATTERN;
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -48,6 +49,8 @@ public class FlightApiControllerIT extends AbstractWireMockTest {
             FlightResponse response = objectMapper.readValue(responseJson, FlightResponse.class);
             assertNotNull(response);
             assertEquals(2, response.flightDtoList().size());
+            assertTrue(response.flightDtoList().get(0).departureTime().matches(UTC_DATE_PATTERN));
+            assertTrue(response.flightDtoList().get(0).arrivalTime().matches(UTC_DATE_PATTERN));
         }
 
         @Test
@@ -66,6 +69,8 @@ public class FlightApiControllerIT extends AbstractWireMockTest {
             FlightDto response = objectMapper.readValue(responseJson, FlightDto.class);
             assertNotNull(response);
             assertEquals("EasyJet", response.airline());
+            assertTrue(response.departureTime().matches(UTC_DATE_PATTERN));
+            assertTrue(response.arrivalTime().matches(UTC_DATE_PATTERN));
         }
 
         @Test
@@ -86,6 +91,8 @@ public class FlightApiControllerIT extends AbstractWireMockTest {
             assertEquals(100, response.id());
             assertEquals("New Supplier", response.supplier());
             assertEquals(BigDecimal.valueOf(1500.00).setScale(2), response.fare());
+            assertTrue(response.departureTime().matches(UTC_DATE_PATTERN));
+            assertTrue(response.arrivalTime().matches(UTC_DATE_PATTERN));
         }
 
         @Test
@@ -124,6 +131,8 @@ public class FlightApiControllerIT extends AbstractWireMockTest {
             FlightDto searchedFlight = response.flightDtoList().get(0);
             assertEquals("Transavia", searchedFlight.airline());
             assertEquals(BigDecimal.valueOf(200.50).setScale(2), searchedFlight.fare());
+            assertTrue(response.flightDtoList().get(0).departureTime().matches(UTC_DATE_PATTERN));
+            assertTrue(response.flightDtoList().get(0).arrivalTime().matches(UTC_DATE_PATTERN));
         }
     }
 
