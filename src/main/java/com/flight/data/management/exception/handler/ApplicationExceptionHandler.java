@@ -3,6 +3,7 @@ package com.flight.data.management.exception.handler;
 import com.flight.data.management.exception.ResourceNotFoundException;
 import com.flight.data.management.exception.ValidationException;
 import com.flight.data.management.model.ErrorResponse;
+import feign.FeignException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,6 +16,10 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.apache.commons.lang3.exception.ExceptionUtils.getStackTrace;
+import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
+import static org.springframework.http.HttpStatus.NOT_FOUND;
+
 @ControllerAdvice
 @Slf4j
 public class ApplicationExceptionHandler {
@@ -24,6 +29,18 @@ public class ApplicationExceptionHandler {
     public ResponseEntity<ErrorResponse> handleGenericException(final Exception exception) {
         log.error("Internal server error - {}", exception.getMessage());
         return ResponseEntity.internalServerError().body(new ErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR.name(), "Something went wrong", null));
+    }
+
+    @ExceptionHandler(FeignException.class)
+    public ResponseEntity<ErrorResponse> handleFeignException(final FeignException exception) {
+        log.error("FeignException - http status: {}, error message: {}",
+                exception.status(), exception.getMessage());
+        if(exception.status() == NOT_FOUND.value()) {
+            return ResponseEntity.status(NOT_FOUND).body(new ErrorResponse(NOT_FOUND.name(), exception.getMessage(), null));
+        } else {
+            log.error("FeignException - stack trace: {}", getStackTrace(exception));
+            return ResponseEntity.status(INTERNAL_SERVER_ERROR).body(new ErrorResponse(INTERNAL_SERVER_ERROR.name(), "Something went wrong", null));
+        }
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

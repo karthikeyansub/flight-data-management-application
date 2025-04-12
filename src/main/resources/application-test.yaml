@@ -19,6 +19,20 @@ spring:
 
 crazy-supplier:
   url: http://localhost:8091
+  default:
+    connectTimeout: 2000
+    readTimeout: 3000
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      crazy-supplier-service:
+        slidingWindowSize: 10
+        slidingWindowType: COUNT_BASED
+        failureRateThreshold: 50
+        waitDurationInOpenState: 30s
+        permittedNumberOfCallsInHalfOpenState: 3
+
 
 logging:
   level.root: INFO

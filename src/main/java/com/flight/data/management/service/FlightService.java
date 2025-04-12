@@ -9,10 +9,14 @@ import com.flight.data.management.repository.FlightRepository;
 import com.flight.data.management.service.client.CrazySupplierClient;
 import com.flight.data.management.service.client.CrazySupplierFlightRequest;
 import com.flight.data.management.service.client.CrazySupplierFlightResponse;
+import feign.RetryableException;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 
 import java.math.RoundingMode;
@@ -98,6 +102,8 @@ public class FlightService {
         return flights;
     }
 
+    @CircuitBreaker(name = "crazy-supplier-service", fallbackMethod = "crazySupplierServiceFallbackMethod")
+    @Retryable(retryFor = RetryableException.class, backoff = @Backoff(delay = 100))
     private List<FlightDto> searchCrazySupplierFlights(FlightSearchDto flightSearchDto) {
         CrazySupplierFlightRequest crazySupplierFlightRequest = CrazySupplierFlightRequest.builder()
                 .departureAirportName(flightSearchDto.departureAirport())
@@ -121,12 +127,12 @@ public class FlightService {
                         .arrivalTime(convertCETToUTC(csFlight.inboundDateTime()).format(DateTimeFormatter.ISO_DATE_TIME))
                         .build()).toList();
             }
-        } else {
-            if(response.getStatusCode() == HttpStatus.INTERNAL_SERVER_ERROR) {
-                throw new CrazySupplierException("Something went wrong!");
-            }
         }
         return Collections.emptyList();
+    }
+
+    private void crazySupplierServiceFallbackMethod(Throwable throwable) {
+        throw new CrazySupplierException("Fallback response due to error in crazy supplier service: " + throwable.getMessage());
     }
 
     private static FlightDto getFlightDto(Flight flight) {
